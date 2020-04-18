@@ -25,25 +25,96 @@ connection.connect(function(err) {
 
 // function which prompts the user for what action they should take
 function start() {
-  inquirer
-    .prompt({
-      name: "postOrBid",
-      type: "list",
-      message: "Would you like to [POST] an auction or [BID] on an auction?",
-      choices: ["POST", "BID", "EXIT"]
-    })
-    .then(function(answer) {
-      // based on their answer, either call the bid or the post functions
-      if (answer.postOrBid === "POST") {
-        postAuction();
-      }
-      else if(answer.postOrBid === "BID") {
-        bidAuction();
-      } else{
-        connection.end();
-      }
-    });
-}
+          // query the database for all items being auctioned
+          connection.query("SELECT * FROM products", function(err, results) {
+            if (err) throw err;
+            for (var i = 0; i < results.length; i++) {
+                console.log("Product Name: " + results[i].product_name + " || Item ID: " + results[i].item_id + " || Price: " + results[i].price);
+              } 
+            // once you have the items, prompt the user for which they'd like to bid on
+            inquirer
+              .prompt([
+                {
+                  name: "buyitem",
+                  type: "rawlist",
+                  choices: function() {
+                    var choiceArray = [];
+                    for (var i = 0; i < results.length; i++) {
+                      choiceArray.push(results[i].product_name);
+                    }
+                    return choiceArray;
+                  },
+                  message: "Which item would you like to buy?"
+                },
+                {
+                  name: "quantity",
+                  type: "input",
+                  message: "How many would you like to buy?"
+                }
+              ])
+
+
+              .then(function(answer) {
+                // get the information of the chosen item
+                var chosenItem;
+                for (var i = 0; i < results.length; i++) {
+                  if (results[i].product_name === answer.buyitem) {
+                    chosenItem = results[i];
+                  }
+                }
+
+               // determine if bid was high enough
+                if (chosenItem.stock_quantity > parseInt(answer.quantity)) {
+                    var newquantity = chosenItem.stock_quantity - parseInt(answer.quantity);
+                    
+                  // bid was high enough, so update db, let the user know, and start over
+                  connection.query(
+                    "UPDATE products SET ? WHERE ?",
+                    [
+                      {
+                        stock_quantity: newquantity
+                      },
+                      {
+                        item_id: chosenItem.item_id
+                      }
+                    ],
+                    function(error) {
+                      if (error) throw err;
+                      console.log("Order Successful! Total Cost: " + (answer.quantity*chosenItem.price) );
+                      start();
+                    }
+                  );
+                }
+                else {
+                  // bid wasn't high enough, so apologize and start over
+                  console.log("Insufficient quantity!");
+                  start();
+              }
+             });
+          });
+        }
+
+
+
+//   inquirer
+//     .prompt({
+//       name: "postOrBid",
+//       type: "list",
+//       message: "Would you like to [POST] an auction or [BID] on an auction?",
+//       choices: ["POST", "BID", "EXIT"]
+//     })
+//     .then(function(answer) {
+//       // based on their answer, either call the bid or the post functions
+//       if (answer.postOrBid === "POST") {
+//         postAuction();
+//       }
+//       else if(answer.postOrBid === "BID") {
+//         bidAuction();
+//       } else{
+//         connection.end();
+//       }
+//     });
+// }
 
 // // function to handle posting new items up for auction
 // function postAuction() {
