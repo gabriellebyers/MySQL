@@ -58,12 +58,14 @@ function start() {
                
                 if (chosenItem.stock_quantity > parseInt(answer.quantity)) {
                     var newquantity = chosenItem.stock_quantity - parseInt(answer.quantity);
-                                     
+                    var productsales =  (answer.quantity*chosenItem.price)     
+                    var newproductsales = productsales + chosenItem.product_sales            
                   connection.query(
                     "UPDATE products SET ? WHERE ?",
                     [
                       {
-                        stock_quantity: newquantity
+                        stock_quantity: newquantity,
+                        product_sales: newproductsales
                       },
                       {
                         item_id: chosenItem.item_id
@@ -71,7 +73,7 @@ function start() {
                     ],
                     function(error) {
                       if (error) throw err;
-                      console.log("Order Successful! Total Cost: " + (answer.quantity*chosenItem.price) );
+                      console.log("Order Successful! Total Cost: " + productsales );
                       start();
                     }
                   );
